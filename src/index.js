@@ -1,4 +1,8 @@
+import "./styles.css";
+import RenderUI from './modules/initializeApp.js';
 import fetchData from './modules/fetch.js';
 
-//testing if api key works
-console.log(fetchData('Toronto'));
+const rootElement = document.getElementById('app');
+const app = new RenderUI(rootElement);
+app.initialize();
+
