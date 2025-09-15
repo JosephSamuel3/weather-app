@@ -1,38 +1,43 @@
- import fetchData from './fetch.js';
- 
- export default class RenderUI {
+import fetchData from './fetch.js';
+import setWeatherIcon from "./iconManage.js";
+import { getDayOfWeek, dateFromEpoch } from './dateFormat.js';
+
+export default class RenderUI {
     constructor(rootElement) {
         this.root = rootElement;
-    }  
+    }
 
     pageLayout() {
         const container = document.createElement('div');
-        
-        const header = document.createElement('header');
-        header.classList.add('header');
-        header.textContent = 'Weather App';
-        container.appendChild(header);
-        
-        const main = document.createElement('main');
-        main.classList.add('main');
-        main.innerHTML = `
+        container.classList.add('container');
+        container.innerHTML = `
+            <h1>Weather App</h1>
+
+            <!-- Search bar -->
             <form class="search-form">
-                <input type="text" class="search-input" placeholder="Enter city name" required>
-                <button type="submit" class="search-button">Search</button>
+                <input type="text" class="search-input" placeholder="Enter city..." required>
+                <button type="submit">Search</button>
             </form>
-            <div class="weather-info">
-                <h2 class="city-name"></h2>
-                <p class="temperature"></p>
-                <p class="description"></p>
-                <p class="humidity"></p>
-                <p class="wind-speed"></p>
+
+            <div class="weather">
+            <!-- Left Card -->
+                <div class="card">
+                    <h2 class="city-name">Toronto</h2>
+                    <p class="temperature"></p>
+                    <div class="icon"></div>
+                    <p class="small-text"></p>
+
+                    <div class="details">
+                        <p class="humidity">></p>
+                        <p class="wind-speed"></p>
+                        <p class="real-feel"></p>
+                        <p class="precipitation"></p>
+                    </div>
+                </div>
+
+                <div class="card forecast"></div>
             </div>
-            <div class="future-forecast">
-                <h3>Future Forecast</h3>
-                <div class="forecast-cards"></div>
-            </div>
-        `;
-        container.appendChild(main);
+      `;
         this.root.appendChild(container);
     }
 
@@ -46,33 +51,70 @@
         }, 3000);
     }
 
+   setDetail(element, label, value) {
+        element.innerHTML = ''; // clear
+        const labelSpan = document.createElement('span');
+        labelSpan.textContent = label;
+
+        const valueSpan = document.createElement('span');
+        valueSpan.textContent = value;
+
+        element.appendChild(labelSpan);
+        element.appendChild(valueSpan);
+    }
+
     updateCurrentWeather(data) {
         const cityName = this.root.querySelector('.city-name');
         const temperature = this.root.querySelector('.temperature');
-        const description = this.root.querySelector('.description');
+        const iconElement = this.root.querySelector('.icon');
+        const date = this.root.querySelector('.small-text');
+        const precipitation = this.root.querySelector('.precipitation');
         const humidity = this.root.querySelector('.humidity');
         const windSpeed = this.root.querySelector('.wind-speed');
+        const realFeel = this.root.querySelector('.real-feel');
+
+        cityName.textContent = data.resolvedAddress;
+        temperature.textContent = `${data.currentConditions.temp} °C`;
+        iconElement.textContent = '';
+        setWeatherIcon(data.currentConditions.icon, iconElement);
+        date.textContent = dateFromEpoch(data.currentConditions.datetimeEpoch);
         
-        cityName.textContent = `City: ${data.resolvedAddress}`;
-        temperature.textContent = `Temperature: ${data.currentConditions.temp} °C`;
-        description.textContent = `Conditions: ${data.currentConditions.conditions}`;
-        humidity.textContent = `Humidity: ${data.currentConditions.humidity}%`;
-        windSpeed.textContent = `Wind Speed: ${data.currentConditions.windspeed} km/h`;
+        humidity.innerHTML = `<span>Humidity:</span> <span>${data.currentConditions.humidity}%</span>`;
+        windSpeed.innerHTML = `<span>Wind Speed:</span> <span>${data.currentConditions.windspeed} km/h</span>`;
+        realFeel.innerHTML = `<span>RealFeel:</span> <span>${data.currentConditions.feelslike} °C</span>`;
+        precipitation.innerHTML = `<span>Precipitation:</span> <span>${data.currentConditions.precip}%</span>`;
     }
 
     updateFutureForecast(data) {
-        const forecastContainer = this.root.querySelector('.forecast-cards');
+        const forecastContainer = this.root.querySelector('.forecast');
+        const tittle = document.createElement('h3');
+        tittle.textContent = '5-Day Forecast';
+
         forecastContainer.innerHTML = '';
+        forecastContainer.appendChild(tittle);
+
         data.days.slice(1, 6).forEach(day => {
             const card = document.createElement('div');
-            card.classList.add('forecast-card');
-            card.innerHTML = `
-                <h4>${day.datetime}</h4>
-                <p>Temp: ${day.temp} °C</p>
-                <p>Conditions: ${day.conditions}</p>
-                <p>Humidity: ${day.humidity}%</p>
-                <p>Wind Speed: ${day.windspeed} km/h</p>
-            `;
+            card.classList.add('forecast-day');
+
+            // Icon container
+            const iconElement = document.createElement('span');
+            iconElement.classList.add('forecast-icon');
+            setWeatherIcon(day.icon, iconElement);
+
+            // Date
+            const date = document.createElement('span');
+            date.textContent = getDayOfWeek(day.datetimeEpoch);
+
+            // Temp
+            const temp = document.createElement('span');
+            temp.textContent = `${day.temp} °C`;
+
+            // Append elements
+            card.appendChild(iconElement);
+            card.appendChild(date);
+            card.appendChild(temp);
+
             forecastContainer.appendChild(card);
         });
     }
@@ -94,7 +136,7 @@
     initialize() {
         this.pageLayout();
         this.defaultLocation('Toronto');
-        
+
         const form = this.root.querySelector('.search-form');
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
